@@ -1,0 +1,20 @@
+{
+  "name": "sheet-music-studio",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "vite --host 0.0.0.0 --port 5173",
+    "build": "vite build",
+    "preview": "vite preview --host 0.0.0.0 --port 4173",
+    "test": "vitest run",
+    "postinstall": "node -e \"const fs=require('fs');fs.mkdirSync('public/pdfjs',{recursive:true});fs.copyFileSync('node_modules/pdfjs-dist/build/pdf.worker.min.mjs','public/pdfjs/pdf.worker.min.mjs');fs.cpSync('node_modules/pdfjs-dist/standard_fonts','public/pdfjs/standard_fonts',{recursive:true});\""
+  },
+  "devDependencies": {
+    "vite": "^8.3.6",
+    "vitest": "^5.1.1"
+  },
+  "dependencies": {
+    "pdfjs-dist": "^6.5.438"
+  }
+}

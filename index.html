@@ -1,0 +1,440 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Cadence — PDF Sheet Music Viewer, Editor &amp; Transposer</title>
+    <meta
+      name="description"
+      content="Display PDF sheet music, scan staves and chords with optical recognition, edit engraved notation interactively, transpose keys and instruments in real time, and export vector PDF or MusicXML."
+    />
+    <link rel="stylesheet" href="/src/styles.css" />
+  </head>
+  <body>
+    <div id="app" class="studio-shell">
+      <!-- Top Studio Header -->
+      <header class="studio-header" role="banner">
+        <div class="header-left">
+          <div class="brand-lockup">
+            <span class="brand-mark" aria-hidden="true">𝄞</span>
+            <div class="brand-copy">
+              <h1 class="brand-title">Cadence</h1>
+              <span class="brand-tag">Sheet Music Studio</span>
+            </div>
+          </div>
+
+          <div class="header-divider" aria-hidden="true"></div>
+
+          <label class="sr-only" for="sample-select">Load sample score</label>
+          <select id="sample-select" class="select-compact" title="Load sample sheet music">
+            <option value="ode-to-joy">Ode to Joy (D Maj)</option>
+            <option value="autumn-jazz">Autumn Cadence (Jazz Lead Sheet)</option>
+            <option value="minuet-in-g">Minuet in G Major (3/4)</option>
+            <option value="cello-prelude">Cello Prelude Study (Bass Clef)</option>
+          </select>
+
+          <button id="btn-open-file" class="btn btn-secondary" type="button" title="Open PDF or MusicXML file">
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+            <span>Open PDF / XML</span>
+          </button>
+          <input id="file-input" type="file" accept=".pdf,.musicxml,.xml" hidden />
+        </div>
+
+        <!-- View Mode Switcher -->
+        <nav class="view-switcher" aria-label="Workspace view mode">
+          <button id="mode-pdf" class="seg-btn" data-mode="pdf" type="button">PDF Studio</button>
+          <button id="mode-split" class="seg-btn is-active" data-mode="split" type="button">Split View</button>
+          <button id="mode-editor" class="seg-btn" data-mode="editor" type="button">Score Editor</button>
+        </nav>
+
+        <div class="header-right">
+          <button id="btn-export-pdf" class="btn btn-primary" type="button" title="Export transposed and edited score as vector PDF">
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+            <span>Export PDF</span>
+          </button>
+          <button id="btn-export-xml" class="btn btn-ghost" type="button" title="Export MusicXML for MuseScore / Finale / Sibelius">
+            MusicXML
+          </button>
+          <button id="btn-print" class="btn btn-icon" type="button" title="Print Sheet Music" aria-label="Print Sheet Music">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 6 2 18 2 18 9"/><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"/><rect x="6" y="14" width="12" height="8"/></svg>
+          </button>
+          <button id="btn-theme" class="btn btn-icon" type="button" title="Toggle warm dark desk mode" aria-label="Toggle theme">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="4"/><path d="M12 2v2"/><path d="M12 20v2"/><path d="m4.93 4.93 1.41 1.41"/><path d="m17.66 17.66 1.41 1.41"/><path d="M2 12h2"/><path d="M20 12h2"/><path d="m6.34 17.66-1.41 1.41"/><path d="m19.07 4.93-1.41 1.41"/></svg>
+          </button>
+          <button id="btn-toggle-inspector" class="btn btn-icon is-active" type="button" title="Toggle Inspector Panel" aria-label="Toggle Inspector">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2"/><line x1="15" y1="3" x2="15" y2="21"/></svg>
+          </button>
+        </div>
+      </header>
+
+      <!-- Transposition & Playback Control Ribbon -->
+      <section class="control-ribbon" aria-label="Transposition and playback controls">
+        <div class="ribbon-group">
+          <span class="ribbon-label">Transpose</span>
+
+          <label class="sr-only" for="key-select">Target Key Signature</label>
+          <select id="key-select" class="select-compact key-select" title="Transpose directly to target key signature"></select>
+
+          <div class="stepper" role="group" aria-label="Transpose semitones">
+            <button id="btn-oct-down" class="step-btn" type="button" title="Transpose down 1 octave (-12 semitones)">-8ve</button>
+            <button id="btn-semi-down" class="step-btn" type="button" title="Transpose down 1 semitone">−1</button>
+            <span id="transpose-readout" class="step-readout" title="Current transposition offset">0 st</span>
+            <button id="btn-semi-up" class="step-btn" type="button" title="Transpose up 1 semitone">+1</button>
+            <button id="btn-oct-up" class="step-btn" type="button" title="Transpose up 1 octave (+12 semitones)">+8ve</button>
+          </div>
+
+          <button id="btn-transpose-reset" class="btn btn-subtle" type="button" title="Reset transposition to original key">Reset</button>
+
+          <label class="sr-only" for="instrument-preset">Instrument transposition preset</label>
+          <select id="instrument-preset" class="select-compact" title="Apply instrument or guitar capo transposition"></select>
+
+          <div class="mini-seg" role="group" aria-label="Enharmonic spelling preference">
+            <button class="mini-seg-btn is-active" data-enh="auto" type="button" title="Automatic key-signature spelling">Auto</button>
+            <button class="mini-seg-btn" data-enh="sharp" type="button" title="Prefer sharps">♯</button>
+            <button class="mini-seg-btn" data-enh="flat" type="button" title="Prefer flats">♭</button>
+          </div>
+        </div>
+
+        <div class="ribbon-divider" aria-hidden="true"></div>
+
+        <div class="ribbon-group">
+          <button id="btn-play" class="btn btn-play" type="button" title="Play / Pause score (Space)">
+            <svg id="icon-play" width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><polygon points="6 3 20 12 6 21 6 3"/></svg>
+            <svg id="icon-stop" width="14" height="14" viewBox="0 0 24 24" fill="currentColor" hidden><rect x="5" y="5" width="14" height="14" rx="2"/></svg>
+            <span id="play-label">Play</span>
+          </button>
+
+          <label class="tempo-control" for="tempo-input" title="Tempo in beats per minute">
+            <span class="tempo-glyph">BPM</span>
+            <input id="tempo-input" type="number" min="40" max="240" value="112" />
+          </label>
+
+          <label class="sr-only" for="synth-instrument">Playback timbre</label>
+          <select id="synth-instrument" class="select-compact" title="Playback instrument timbre">
+            <option value="piano">Grand Piano</option>
+            <option value="epiano">Electric Piano</option>
+            <option value="strings">Warm Strings</option>
+            <option value="guitar">Nylon Guitar</option>
+          </select>
+
+          <button id="btn-chords-audio" class="btn btn-toggle is-active" type="button" title="Toggle chord accompaniment audio">Chords</button>
+          <button id="btn-metronome" class="btn btn-toggle" type="button" title="Toggle metronome click">Metro</button>
+          <button id="btn-loop" class="btn btn-toggle" type="button" title="Toggle playback loop">Loop</button>
+        </div>
+      </section>
+
+      <!-- Main Studio Body -->
+      <main class="studio-main" id="studio-main" data-view="split">
+        <!-- Left Context Tool Rail -->
+        <aside class="tool-rail" aria-label="Editing and annotation tools">
+          <!-- Score Editing Tools -->
+          <div class="rail-section" id="rail-score-tools">
+            <span class="rail-heading">Score</span>
+            <button class="rail-btn is-active" data-score-tool="select" type="button" title="Select & drag pitch (V)">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m3 3 7.07 16.97 2.51-7.39 7.39-2.51L3 3z"/></svg>
+              <span>Select</span>
+            </button>
+            <button class="rail-btn" data-score-tool="note" type="button" title="Click staff to add note (N)">
+              <span class="rail-glyph">♩</span>
+              <span>Note</span>
+            </button>
+            <button class="rail-btn" data-score-tool="rest" type="button" title="Click staff to add rest (R)">
+              <span class="rail-glyph">𝄽</span>
+              <span>Rest</span>
+            </button>
+            <button class="rail-btn" data-score-tool="chord" type="button" title="Click note to edit chord symbol (C)">
+              <span class="rail-glyph-text">C7</span>
+              <span>Chord</span>
+            </button>
+            <button class="rail-btn" data-score-tool="erase" type="button" title="Click note to delete (E)">
+              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m7 21-4.3-4.3c-1-1-1-2.5 0-3.4l9.6-9.6c1-1 2.5-1 3.4 0l5.6 5.6c1 1 1 2.5 0 3.4L13 21"/><path d="M22 21H7"/></svg>
+              <span>Erase</span>
+            </button>
+
+            <div class="rail-sep"></div>
+            <span class="rail-heading">Value</span>
+            <div class="duration-grid">
+              <button class="dur-btn" data-dur="w" type="button" title="Whole note (1)">1</button>
+              <button class="dur-btn" data-dur="h" type="button" title="Half note (2)">½</button>
+              <button class="dur-btn is-active" data-dur="q" type="button" title="Quarter note (3)">¼</button>
+              <button class="dur-btn" data-dur="8" type="button" title="Eighth note (4)">⅛</button>
+              <button class="dur-btn" data-dur="16" type="button" title="Sixteenth note (5)">1/16</button>
+              <button id="btn-dot-toggle" class="dur-btn" type="button" title="Dotted rhythm (.)">•</button>
+            </div>
+
+            <div class="rail-sep"></div>
+            <span class="rail-heading">Bar</span>
+            <button id="btn-add-measure" class="rail-btn" type="button" title="Append new measure">+ Bar</button>
+            <button id="btn-del-measure" class="rail-btn" type="button" title="Remove last measure">− Bar</button>
+            <button id="btn-undo" class="rail-btn" type="button" title="Undo (Ctrl+Z)" disabled>Undo</button>
+            <button id="btn-redo" class="rail-btn" type="button" title="Redo (Ctrl+Y)" disabled>Redo</button>
+          </div>
+
+          <div class="rail-sep"></div>
+
+          <!-- PDF Markup Tools -->
+          <div class="rail-section" id="rail-pdf-tools">
+            <span class="rail-heading">PDF</span>
+            <button class="rail-btn is-active" data-pdf-tool="cursor" type="button" title="PDF pointer">Pan</button>
+            <button class="rail-btn" data-pdf-tool="chord" type="button" title="Stamp auto-transposing chord onto PDF">+C7</button>
+            <button class="rail-btn" data-pdf-tool="highlight" type="button" title="Highlighter marker">Hi-Lt</button>
+            <button class="rail-btn" data-pdf-tool="pen" type="button" title="Red performance pencil">Pen</button>
+            <button class="rail-btn" data-pdf-tool="text" type="button" title="Text annotation">Text</button>
+            <button class="rail-btn" data-pdf-tool="whiteout" type="button" title="Whiteout mask box">Mask</button>
+            <button id="btn-pdf-undo-mark" class="rail-btn" type="button" title="Undo last PDF annotation">↶</button>
+            <button id="btn-pdf-clear-marks" class="rail-btn" type="button" title="Clear annotations on this page">Clear</button>
+          </div>
+        </aside>
+
+        <!-- Dual Workspace Area -->
+        <div class="workspace-panes">
+          <!-- Left Pane: Real PDF Sheet Music Viewer -->
+          <section class="pane pane-pdf" id="pane-pdf" aria-label="PDF Sheet Music Viewer">
+            <div class="pane-header">
+              <div class="pane-title-group">
+                <span class="pane-kicker">PDF Document</span>
+                <span id="pdf-filename" class="pane-filename">Ode_to_Joy.pdf</span>
+                <span id="pdf-chords-badge" class="meta-pill">0 chords</span>
+              </div>
+
+              <div class="pane-actions">
+                <div class="pdf-pager">
+                  <button id="btn-pdf-prev" class="mini-btn" type="button" title="Previous page">‹</button>
+                  <span id="pdf-page-indicator" class="pager-text">1 / 1</span>
+                  <button id="btn-pdf-next" class="mini-btn" type="button" title="Next page">›</button>
+                </div>
+
+                <div class="pdf-zoom">
+                  <button id="btn-pdf-zoom-out" class="mini-btn" type="button" title="Zoom out">−</button>
+                  <span id="pdf-zoom-readout" class="pager-text">115%</span>
+                  <button id="btn-pdf-zoom-in" class="mini-btn" type="button" title="Zoom in">+</button>
+                  <button id="btn-pdf-fit" class="mini-btn" type="button" title="Fit page width">Fit</button>
+                </div>
+
+                <label class="inline-check" title="Overlay transposed chords directly on top of detected PDF chords">
+                  <input id="chk-pdf-transpose-chords" type="checkbox" checked />
+                  <span>Transpose Chords</span>
+                </label>
+
+                <button id="btn-sync-pdf" class="btn btn-subtle" type="button" title="Re-render edited/transposed score into the PDF viewer">
+                  Update PDF
+                </button>
+
+                <button id="btn-run-omr" class="btn btn-accent-outline" type="button" title="Detect staves, notes, and chords from this PDF page using Optical Music Recognition">
+                  Scan PDF → Score
+                </button>
+              </div>
+            </div>
+
+            <div class="pdf-stage" id="pdf-stage">
+              <div class="empty-state">Loading sheet music PDF…</div>
+            </div>
+
+            <div class="drop-overlay" id="pdf-drop-overlay" hidden>
+              <div class="drop-card">
+                <strong>Drop Sheet Music PDF or MusicXML</strong>
+                <span>Renders locally with PDF.js, extracts chords, and scans staves with OMR</span>
+              </div>
+            </div>
+          </section>
+
+          <!-- Right Pane: Interactive Engraved Score Editor -->
+          <section class="pane pane-editor" id="pane-editor" aria-label="Interactive Sheet Music Editor">
+            <div class="pane-header">
+              <div class="pane-title-group">
+                <span class="pane-kicker">Editable Score</span>
+                <span id="editor-hint" class="pane-hint">Click any note to select &amp; drag pitch • Switch to Note (N) to write</span>
+              </div>
+              <div class="pane-actions">
+                <label class="sr-only" for="clef-select">Clef</label>
+                <select id="clef-select" class="select-micro" title="Staff clef">
+                  <option value="treble">Treble Clef (𝄞)</option>
+                  <option value="bass">Bass Clef (𝄢)</option>
+                </select>
+                <label class="sr-only" for="timesig-select">Time signature</label>
+                <select id="timesig-select" class="select-micro" title="Time signature">
+                  <option value="4/4">4/4</option>
+                  <option value="3/4">3/4</option>
+                  <option value="2/4">2/4</option>
+                  <option value="6/8">6/8</option>
+                </select>
+              </div>
+            </div>
+
+            <div class="editor-stage" id="editor-stage">
+              <div id="score-canvas-host" class="score-canvas-host"></div>
+            </div>
+          </section>
+        </div>
+
+        <!-- Right Collapsible Inspector Drawer -->
+        <aside class="inspector-drawer" id="inspector-drawer" aria-label="Note and OMR Inspector">
+          <!-- Selected Note Inspector -->
+          <div class="inspector-section" id="inspector-note-section" hidden>
+            <div class="inspector-head">
+              <h2>Selected Note</h2>
+              <button id="btn-delete-selected" class="btn-link-danger" type="button">Delete</button>
+            </div>
+
+            <div class="pitch-hero">
+              <div class="pitch-readout-block">
+                <span id="insp-pitch-name" class="pitch-big">F♯4</span>
+                <span id="insp-pitch-freq" class="pitch-sub">369.99 Hz • MIDI 66</span>
+              </div>
+              <div class="pitch-nudge-group">
+                <button id="btn-note-up" class="mini-btn" type="button" title="Pitch up 1 semitone (↑)">▲</button>
+                <button id="btn-note-down" class="mini-btn" type="button" title="Pitch down 1 semitone (↓)">▼</button>
+              </div>
+            </div>
+
+            <div class="field-row">
+              <label>Accidental</label>
+              <div class="mini-seg full">
+                <button class="mini-seg-btn" data-acc="-1" type="button">♭ Flat</button>
+                <button class="mini-seg-btn" data-acc="0" type="button">♮ Nat</button>
+                <button class="mini-seg-btn" data-acc="1" type="button">♯ Sharp</button>
+              </div>
+            </div>
+
+            <div class="field-row">
+              <label>Duration</label>
+              <div class="mini-seg full">
+                <button class="mini-seg-btn" data-insp-dur="w" type="button">1</button>
+                <button class="mini-seg-btn" data-insp-dur="h" type="button">½</button>
+                <button class="mini-seg-btn" data-insp-dur="q" type="button">¼</button>
+                <button class="mini-seg-btn" data-insp-dur="8" type="button">⅛</button>
+                <button class="mini-seg-btn" data-insp-dur="16" type="button">16</button>
+              </div>
+            </div>
+
+            <div class="field-row two-col">
+              <label class="inline-check">
+                <input id="insp-dotted" type="checkbox" />
+                <span>Dotted (1.5×)</span>
+              </label>
+              <label class="inline-check">
+                <input id="insp-is-rest" type="checkbox" />
+                <span>Rest</span>
+              </label>
+            </div>
+
+            <div class="field-row">
+              <label for="insp-chord">Chord Symbol</label>
+              <input id="insp-chord" class="text-input" type="text" placeholder="e.g. Cmaj7, F#m7, G7/B" />
+            </div>
+
+            <div class="field-row two-col">
+              <div>
+                <label for="insp-dynamic">Dynamic</label>
+                <select id="insp-dynamic" class="text-input">
+                  <option value="">None</option>
+                  <option value="pp">pp</option>
+                  <option value="p">p</option>
+                  <option value="mp">mp</option>
+                  <option value="mf">mf</option>
+                  <option value="f">f</option>
+                  <option value="ff">ff</option>
+                </select>
+              </div>
+              <div>
+                <label for="insp-lyric">Lyric</label>
+                <input id="insp-lyric" class="text-input" type="text" placeholder="Syllable" />
+              </div>
+            </div>
+          </div>
+
+          <!-- Score Details Inspector -->
+          <div class="inspector-section" id="inspector-score-section">
+            <div class="inspector-head">
+              <h2>Score Details</h2>
+            </div>
+            <div class="field-row">
+              <label for="meta-title">Title</label>
+              <input id="meta-title" class="text-input" type="text" />
+            </div>
+            <div class="field-row">
+              <label for="meta-subtitle">Subtitle</label>
+              <input id="meta-subtitle" class="text-input" type="text" />
+            </div>
+            <div class="field-row">
+              <label for="meta-composer">Composer</label>
+              <input id="meta-composer" class="text-input" type="text" />
+            </div>
+          </div>
+
+          <!-- Optical Music Recognition (OMR) Panel -->
+          <div class="inspector-section">
+            <div class="inspector-head">
+              <h2>PDF Optical Scanner</h2>
+              <span class="omr-tag">OMR</span>
+            </div>
+            <p class="inspector-copy">
+              Detects 5-line staves, barlines, noteheads, and PDF text-layer chords directly from the rendered PDF page.
+            </p>
+            <div class="field-row two-col">
+              <div>
+                <label for="omr-clef">Assume Clef</label>
+                <select id="omr-clef" class="text-input">
+                  <option value="treble">Treble</option>
+                  <option value="bass">Bass</option>
+                </select>
+              </div>
+              <div>
+                <label for="omr-key">Source Key</label>
+                <select id="omr-key" class="text-input"></select>
+              </div>
+            </div>
+            <div class="field-row">
+              <label for="omr-threshold">Ink Sensitivity: <span id="omr-threshold-val">175</span></label>
+              <input id="omr-threshold" type="range" min="110" max="225" value="175" />
+            </div>
+            <div class="omr-actions">
+              <button id="btn-omr-scan-panel" class="btn btn-secondary full-w" type="button">Analyze Current PDF Page</button>
+              <label class="inline-check">
+                <input id="chk-omr-overlay" type="checkbox" />
+                <span>Show detection boxes on PDF</span>
+              </label>
+            </div>
+            <div id="omr-result-box" class="omr-result-box" hidden>
+              <div id="omr-stats" class="omr-stats"></div>
+              <button id="btn-omr-apply" class="btn btn-primary full-w" type="button">Load Scanned Score into Editor</button>
+            </div>
+          </div>
+
+          <!-- Shortcuts Reference -->
+          <div class="inspector-section shortcuts-box">
+            <div class="inspector-head">
+              <h2>Shortcuts</h2>
+            </div>
+            <dl class="shortcut-list">
+              <div><dt>Space</dt><dd>Play / Stop</dd></div>
+              <div><dt>V / N / R / C</dt><dd>Select / Note / Rest / Chord</dd></div>
+              <div><dt>1 – 5 / .</dt><dd>Whole → 16th / Dot</dd></div>
+              <div><dt>↑ / ↓</dt><dd>Shift selected note ±1 st</dd></div>
+              <div><dt>Shift + ↑/↓</dt><dd>Shift note ±1 octave</dd></div>
+              <div><dt>Del / ⌫</dt><dd>Delete selected note</dd></div>
+              <div><dt>Ctrl+Z / Y</dt><dd>Undo / Redo</dd></div>
+            </dl>
+          </div>
+        </aside>
+      </main>
+
+      <!-- Bottom Status Bar -->
+      <footer class="status-bar" role="contentinfo">
+        <div class="status-left">
+          <span id="status-key" class="status-item">Key: D Major (Original)</span>
+          <span class="status-dot">•</span>
+          <span id="status-counts" class="status-item">8 measures • 30 notes</span>
+        </div>
+        <div class="status-right">
+          <span id="status-hover" class="status-item status-mono">Ready — Open any PDF sheet music or click the staff to edit</span>
+        </div>
+      </footer>
+
+      <!-- Toast Notification -->
+      <div id="toast" class="toast" role="status" aria-live="polite" hidden></div>
+    </div>
+
+    <script type="module" src="/src/main.js"></script>
+  </body>
+</html>
